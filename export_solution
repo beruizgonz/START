@@ -1,0 +1,59 @@
+import numpy as np 
+import pandas as pd
+import openpyxl
+
+N = 6
+
+import pandas as pd
+import numpy as np
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill
+import pandas as pd
+import numpy as np
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill
+
+N = 10  # Change N to the desired number of color palettes
+
+def create_color_palettes():
+    color_palettes = []
+    for i in range(N):
+        color_palettes.append("#{:02X}{:02X}{:02X}".format(*np.random.randint(0, 255, size=(3,))))
+    return color_palettes
+
+def hex_to_argb(hex_color):
+    # Convert a hex color code to aRGB format
+    hex_color = hex_color.lstrip("#")
+    return "FF" + hex_color
+
+def create_random_data_frame():
+    data = np.random.randint(0, N, size=(18, 6))
+    df = pd.DataFrame(data)
+    return df
+
+def apply_color(value, color_palettes):
+    color = hex_to_argb(color_palettes[value])
+    fill = PatternFill(start_color=color, end_color=color, fill_type='solid')
+    return fill
+
+def export_to_excel(df, color_palettes):
+    # Create a Workbook
+    workbook = Workbook()
+    sheet = workbook.active
+
+    # Apply colors to the entire DataFrame and export to Excel
+    for i, row in enumerate(df.values):
+        for j, cell_value in enumerate(row):
+            color_fill = apply_color(cell_value, color_palettes)
+            sheet.cell(row=i + 1, column=j + 1).fill = color_fill
+
+    workbook.save('results_colored.xlsx')
+
+if __name__ == "__main__":
+    color_palettes = create_color_palettes()
+    df = create_random_data_frame()
+    export_to_excel(df, color_palettes)
+
+
+
+
