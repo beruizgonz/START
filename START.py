@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np 
 from gurobipy import *
-from export_solution import create_color_palettes, export_to_excel
+from utils import create_color_palettes, export_to_excel
 
 # LECTURA DE DATOS
-shdata = pd.read_excel('Data(1).xlsx', sheet_name='Data', header=None)
+shdata = pd.read_excel('Data.xlsx', sheet_name='Data', header=None)
 pNperiods = shdata.loc[0,1]
 pNhealthp = shdata.loc[1,1]
 pNpeople = shdata.loc[2,1]
@@ -18,6 +18,7 @@ pCostRet = shprices.loc[:,'Return'].to_numpy()
 
 shdemand = pd.read_excel('Data.xlsx', sheet_name='Demand')
 pHealthdem = shdemand.loc[:,'N. People'].to_numpy()
+
 
 shhealthprofiles = pd.read_excel('Data.xlsx', sheet_name='HealthProfiles', header=None)
 pProfiles = shhealthprofiles.loc[1:,1:].to_numpy()
