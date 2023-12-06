@@ -2,6 +2,8 @@ import pandas as pd
 import openpyxl
 import os
 import random as random
+from openpyxl.utils import get_column_letter
+
 
 # Define general variables
 PERIODS = 5
@@ -42,6 +44,12 @@ def add_sheet_excel(excel_file, name_sheet, df_data, index = False):
     with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a') as writer:
         df_data.to_excel(writer, sheet_name=name_sheet, index = index)
 
+def columns_dimensions(wb, sheet, df, width = 10):
+    for i in range(df.shape[1]+1):
+        column_letter = get_column_letter(i+1)
+        sheet.column_dimensions[column_letter].width = width
+    wb.save(excel_file_path)
+
 def persons_availability(n_periods, n_persons):
     periods = []
     for i in range(n_periods):
@@ -58,23 +66,24 @@ def persons_availability(n_periods, n_persons):
     add_sheet_excel(excel_file_path, 'Availability', df, True)
 
 def persons_availability_two_years(n_periods, n_persons):
-    periods = []
-    for i in range(n_periods):
-        periods.append("Period " + str(i))
-    days = []
-    for i in range(n_periods):
-        days.append("Day " + str(i))
-    persons = []
-    for i in range(n_persons):
-        persons.append("Person " + str(i))
+    periods = ["Period " + str(i) for i in range(n_periods)]
+    days = pd.date_range(start="1/1/2023", periods=n_periods, freq='4D', normalize=False)
+    persons = ["Person " + str(i) for i in range(n_persons)]
+    
     df = pd.DataFrame(index=persons, columns=days)
     values = [0, 0.5, 1]
-    for i in range(0,N_PEOPLE):
-        for j in range(0, N_DAYS, 4):
-            value = random.choice(values)
+    
+    for i in range(n_persons):
+        for j in range(0, n_periods, 4):
+            value = random.choice(values) 
             df.iloc[i, j:j+4] = value
+    df.columns = df.columns.strftime('%d/%m/%Y')
+    # Make the columns with 10pt widt
     add_sheet_excel(excel_file_path, 'Availability', df, True)
-
+    wb = openpyxl.load_workbook(excel_file_path)
+    sheet = wb['Availability']
+    columns_dimensions(wb, sheet, df, width = 12)
+ 
 def personal_START_team(): 
     # Generate the demand data of person needs.
     parent_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
@@ -104,6 +113,9 @@ def personal_START_team():
     df_profiles['Abbreviation'] = df_profiles['Code'].map(dict_abbreviations)
     df_profiles = df_profiles[['Code',  'Profile', 'Abbreviation', 'Number of people needed']]
     add_sheet_excel(excel_file_path, 'Demand', df_profiles, False )
+    wb = openpyxl.load_workbook(excel_file_path)
+    sheet = wb['Demand']
+    columns_dimensions(wb, sheet, df_profiles, width = 30)
 
 def create_prices(periods_emergency = N_PERIODS_EMERGENCY):
     periods_e = []
@@ -117,7 +129,7 @@ def create_prices(periods_emergency = N_PERIODS_EMERGENCY):
     add_sheet_excel(excel_file_path, 'Prices', df_prices)
 
 def health_profiles(n_people, n_profiles, excel_file_path):
-    profiles = ["Profile " + str(i) for i in range(n_profiles)]
+    profiles = ["Profile " + str(i+1) for i in range(n_profiles)]
     persons = ["Person " + str(i) for i in range(n_people)]
     df = pd.DataFrame(index=persons, columns=profiles)
     for j in range(n_people):
@@ -131,10 +143,10 @@ def health_profiles(n_people, n_profiles, excel_file_path):
 if __name__ == '__main__':
     create_excel_file(excel_file_path)
     # Create the sheet 'Availability' in the excel file
-    persons_availability(N_PERIODS_EMERGENCY, N_PEOPLE)
+    persons_availability_two_years(N_PERIODS_EMERGENCY, N_PEOPLE)
     # Create the sheet 'Demand' in the excel file
     personal_START_team()
-    # Create the sheet 'Prices' in the excel file
+    # Create the sheet 'Prices' in the excel file 
     create_prices()
     # Create the sheet 'HealthProfiles' in the excel file
     health_profiles(N_PEOPLE, N_PROFILES, excel_file_path=excel_file_path)
