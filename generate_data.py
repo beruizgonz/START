@@ -41,6 +41,11 @@ def create_excel_file(excel_file_path):
     wb.save(excel_file_path)
 
 def add_sheet_excel(excel_file, name_sheet, df_data, index = False): 
+    # if the excel shate exists overwrite it
+    if name_sheet in openpyxl.load_workbook(excel_file).sheetnames:
+        wb = openpyxl.load_workbook(excel_file)
+        wb.remove(wb[name_sheet])
+        wb.save(excel_file)
     with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a') as writer:
         df_data.to_excel(writer, sheet_name=name_sheet, index = index)
 

@@ -1,8 +1,11 @@
 import pandas as pd
 import numpy as np
+import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill
 import os 
+
+from generate_data import add_sheet_excel
 
 N = 10  # Change N to the desired number of color palettes
 
@@ -39,13 +42,12 @@ def apply_color(value, color_palettes):
     fill = PatternFill(start_color=color, end_color=color, fill_type='solid')
     return fill
 
-def export_to_excel(name,df, dict_references, color_palettes):
-    # Create a Workbook
-    workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = 'Solution'
+def export_to_excel(excel_file ,df, dict_references, color_palettes):
+    # Open the excel file and add a sheet
+    workbook = openpyxl.load_workbook(excel_file)
+    sheet = workbook.create_sheet('Profile plan')
     # Add a row with the column names as 'Period 1', 'Period 2', etc., and a blank cell at the beginning
-    for i in range(1, df.shape[1] + 1):
+    for i in range(1, df.shape[1]):
         sheet.cell(row=1, column=i + 1).value = 'Period ' + str(i)
     # Add a column with the row names as 'Person 1', 'Person 2', etc.
     for i in range(1, df.shape[0] + 1):
@@ -59,16 +61,18 @@ def export_to_excel(name,df, dict_references, color_palettes):
                 sheet.cell(row=i + 2, column=j + 2).value = ''
                 # sheet.cell(row=i + 1, column=j + 1).fill = None
             else:
-                sheet.cell(row=i + 2, column=j + 2).value = '' # If w want to add the profile name to the cell change for dict_references[cell_value]
+                sheet.cell(row=i + 2, column=j + 2).value = dict_references[cell_value] # If w want to add the profile name to the cell change for dict_references[cell_value]
                 sheet.cell(row=i + 2, column=j + 2).fill = color_fill
-           
+
     # add a legend to the sheet with the dict_references
     for i, key in enumerate(dict_references):
         sheet.cell(row=i + 5, column=df.shape[1] + 3).value = dict_references[key]
         color_fill = apply_color(key, color_palettes)
         sheet.cell(row=i + 5, column=df.shape[1] + 2).fill = color_fill
+    
+    # Save the excel file
+    workbook.save(excel_file)
 
-    workbook.save(f'{name}.xlsx')
 
 
 
