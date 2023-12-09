@@ -3,22 +3,17 @@ import numpy as np
 import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill
-import os 
+from openpyxl.utils import get_column_letter
 
-from generate_data import add_sheet_excel
-
-N = 10  # Change N to the desired number of color palettes
 
 # The colors are always the same for a given seed. But the set make that later the coolor assigned to a value is random
 def create_color_palettes(N, seed = 42):
-    color_palettes = set()  # Use a set to ensure uniqueness
-  # Set a seed for reproducibility
+    color_palettes = set()  # Use a set to ensure uniqueness of colors
     np.random.seed(seed)
     while len(color_palettes) < N:
         # Generate a random color palette
         color = "#{:02X}{:02X}{:02X}".format(*np.random.randint(0, 255, size=(3,)))
         color_palettes.add(color)
-        
     dict_color = dict(zip(range(1,N+1), color_palettes))
     return dict_color
 
@@ -43,48 +38,57 @@ def apply_color(value, color_palettes):
     return fill
 
 def export_to_excel(excel_file ,df, dict_references, color_palettes):
-    # Open the excel file and add a sheet
     workbook = openpyxl.load_workbook(excel_file)
     sheet = workbook.create_sheet('Profile plan')
-    # Add a row with the column names as 'Period 1', 'Period 2', etc., and a blank cell at the beginning
     for i in range(1, df.shape[1]):
         sheet.cell(row=1, column=i + 1).value = 'Period ' + str(i)
-    # Add a column with the row names as 'Person 1', 'Person 2', etc.
     for i in range(1, df.shape[0] + 1):
         sheet.cell(row=i + 1, column=1).value = 'Person ' + str(i)
-    # Apply colors to the entire DataFrame and export to Excel
     for i, row in enumerate(df.values):
         for j, cell_value in enumerate(row):
             color_fill = apply_color(cell_value, color_palettes)
-            # addt the value to the cell
             if cell_value == 0:
                 sheet.cell(row=i + 2, column=j + 2).value = ''
-                # sheet.cell(row=i + 1, column=j + 1).fill = None
             else:
-                sheet.cell(row=i + 2, column=j + 2).value = dict_references[cell_value] # If w want to add the profile name to the cell change for dict_references[cell_value]
-                sheet.cell(row=i + 2, column=j + 2).fill = color_fill
-
-    # add a legend to the sheet with the dict_references
+                sheet.cell(row=i + 2, column=j + 2).value = dict_references[cell_value] 
     for i, key in enumerate(dict_references):
         sheet.cell(row=i + 5, column=df.shape[1] + 3).value = dict_references[key]
         color_fill = apply_color(key, color_palettes)
         sheet.cell(row=i + 5, column=df.shape[1] + 2).fill = color_fill
-    
-    # Save the excel file
     workbook.save(excel_file)
 
+def access_model_variables(name_variable, index_variables, model): 
+    variable = {}
+    if index_variables == 1: 
+        for var in model.getVars():
+            if name_variable in var.VarName:
+                i = int(var.VarName.split('_')[1])
+                variable[i] = var
+    elif index_variables == 2: 
+        for var in model.getVars():
+            if name_variable in var.VarName:
+                i, t = map(int, var.VarName.split('_')[1:])
+                variable[i, t] = var
+    elif index_variables == 3:
+        for var in model.getVars():
+            if name_variable in var.VarName:
+                i, j, t = map(int, var.VarName.split('_')[1:])
+                variable[i, j, t] = var
+    return variable
 
+def add_sheet_excel(excel_file, name_sheet, df_data, index = False): 
+    # if the excel shate exists overwrite it
+    if name_sheet in openpyxl.load_workbook(excel_file).sheetnames:
+        wb = openpyxl.load_workbook(excel_file)
+        wb.remove(wb[name_sheet])
+        wb.save(excel_file)
+    with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a') as writer:
+        df_data.to_excel(writer, sheet_name=name_sheet, index = index)
 
-
-if __name__ == "__main__":
-    N = 6
-    color_palettes1 = create_color_palettes(6)
-    color_palettes2 = create_color_palettes(6)
-    print(color_palettes1)
-    print(color_palettes2)
-    #df = create_random_data_frame(6, 18,6)
-    #export_to_excel(df, color_palettes)
-
-
+def columns_dimensions(excel_file, wb, sheet, df, width = 10):
+    for i in range(df.shape[1]+1):
+        column_letter = get_column_letter(i+1)
+        sheet.column_dimensions[column_letter].width = width
+    wb.save(excel_file)
 
 
