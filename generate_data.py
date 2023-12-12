@@ -82,13 +82,13 @@ def chartered_flights(opts):
     sheet = wb['Charter']
     columns_dimensions(excel_file_path, wb, sheet, df, width = 14)
 
-def persons_availability_two_years(n_periods, n_persons):
+def persons_availability_two_years(n_periods, n_persons, excel_file_path):
     periods = ["Period " + str(i) for i in range(n_periods)]
     days = pd.date_range(start="1/1/2023", periods=n_periods, freq='4D', normalize=False)
     persons = ["Person " + str(i) for i in range(n_persons)]
     
     df = pd.DataFrame(index=persons, columns=days)
-    values = [0, 0.5, 1]
+    values = [0, 1, 2]
     
     for i in range(n_persons):
         for j in range(0, n_periods, 4):
@@ -96,10 +96,24 @@ def persons_availability_two_years(n_periods, n_persons):
             df.iloc[i, j:j+4] = value
     df.columns = df.columns.strftime('%d/%m/%Y')
     # Make the columns with 10pt widt
-    add_sheet_excel(excel_file_path, 'Availability', df, True)
-    wb = openpyxl.load_workbook(excel_file_path)
-    sheet = wb['Availability']
-    columns_dimensions(excel_file_path, wb, sheet, df, width = 12)
+    with pd.ExcelWriter(excel_file_path, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Availability', index=True, startrow=1, header=True)
+
+        # Set the width of the columns
+        sheet = writer.sheets['Availability']
+        for column in sheet.columns:
+            max_length = 0
+            column = [column[0]] + [str(cell.value) for cell in column[1:]]
+            try:
+                max_length = max(len(cell) for cell in column)
+                adjusted_width = (max_length + 2)
+                sheet.column_dimensions[column[0].column_letter].width = adjusted_width
+            except (TypeError, AttributeError):
+                pass
+    # add_sheet_excel(excel_file_path, 'Availability', df, True)
+    # wb = openpyxl.load_workbook(excel_file_path)
+    # sheet = wb['Availability']
+    # columns_dimensions(excel_file_path, wb, sheet, df, width = 12)
 
 def demand(opts):
     profile_excel = opts.profile_path
@@ -194,21 +208,23 @@ def health_profiles(n_people, n_profiles, excel_file_path):
 
 
 if __name__ == '__main__':
+
     opt = parser_args()
-    create_excel_file(opt)
-    # Create the sheet 'Availability' in the excel file
-    #persons_availability_two_years(opt)
-    # Create the sheet 'Demand' in the excel file
-    # personal_START_team()
-    demand(opt)
-    # Create the sheet 'Prices' in the excel file 
-    create_prices(opt)
-    # Create the sheet 'Chartered' in the excel file
-    chartered_flights(opt)
-    # Create the sheet 'Weights' in the excel file
-    weights(opt)
-    # Create the sheet 'HealthProfiles' in the excel file
-    # health_profiles(opt)
+    # create_excel_file(opt)
+    # # Create the sheet 'Availability' in the excel file
+    # #persons_availability_two_years(opt)
+    # # Create the sheet 'Demand' in the excel file
+    # # personal_START_team()
+    # demand(opt)
+    # # Create the sheet 'Prices' in the excel file 
+    # create_prices(opt)
+    # # Create the sheet 'Chartered' in the excel file
+    # chartered_flights(opt)
+    # # Create the sheet 'Weights' in the excel file
+    # weights(opt)
+    # # Create the sheet 'HealthProfiles' in the excel file
+    # # health_profiles(opt)
+    persons_availability_two_years(181, opt.nPeople,'Availability2.xlsx')
 
 
 
