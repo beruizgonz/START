@@ -97,7 +97,7 @@ def persons_availability_two_years(n_periods, n_persons, excel_file_path):
     df.columns = df.columns.strftime('%d/%m/%Y')
     # Make the columns with 10pt widt
     with pd.ExcelWriter(excel_file_path, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Availability', index=True, startrow=1, header=True)
+        df.to_excel(writer, sheet_name='Availability', index=True, startrow=0, header=True)
 
         # Set the width of the columns
         sheet = writer.sheets['Availability']
