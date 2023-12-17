@@ -241,7 +241,51 @@ def health_profiles(opts):
     df_health_profiles = df_health_profiles[['Person | Profile'] + list(df_health_profiles.columns[:-1])]
     add_sheet_excel(opts.output_path, 'HealthProfiles', df_health_profiles, False)
 
- 
+def availability_complementary(opts): 
+    for i in range(opts.nPeople): 
+        number_preference = random.randint(0,2)
+        probabilities = generate_probabilities(number_preference)
+        print(f'Number: {number_preference} and probabilities {probabilities}')
+        for i in range(opts.nPeriods):
+            df = pd.DataFrame(index=range(1,opts.nPeople + 1), columns= range(1,opts.nPeriods + 1))
+            for i in range(opts.nPeople):
+                for j in range(opts.nPeriods):
+                    df.loc[i+1,j+1] = weighted_random_choice(probabilities)
+    add_sheet_excel(opts.output_path, 'Availability', df, True)   
+
+def weighted_random_choice(probabilities):
+    """ Selects a number based on given probabilities. """
+    numbers = [0, 1, 2]
+    return np.random.choice(numbers, p=probabilities)
+   
+def generate_probabilities(number_preference):
+    highest_probability = random.uniform(0.6, 0.8)
+    remaining_probability = 1 - highest_probability
+    probabilities = [0, 0, 0]
+    second_probability = random.uniform(0, remaining_probability)
+    third_probability = remaining_probability - second_probability
+    if second_probability > third_probability:
+        second_highest_probability, third_highest_probability = second_probability, third_probability
+    else: 
+        second_highest_probability, third_highest_probability = third_probability, second_probability
+    if number_preference == 0:
+        probabilities[number_preference] = highest_probability
+        probabilities[1] = second_highest_probability
+        probabilities[2] = third_highest_probability
+    elif number_preference == 1:
+        probabilities[number_preference] = highest_probability
+        probabilities[0] = second_highest_probability
+        probabilities[2] = third_highest_probability
+    elif number_preference == 2:
+        probabilities[number_preference] = highest_probability
+        probabilities[1] = second_highest_probability
+        probabilities[0] = third_highest_probability
+    return probabilities
+
+
+    
+
+
 if __name__ == '__main__':
     opt = parser_args()
     # create_excel_file(opt)
@@ -257,7 +301,8 @@ if __name__ == '__main__':
     # # Create the sheet 'Weights' in the excel file
     # weights(opt)
     # Create the sheet 'HealthProfiles' in the excel file
-    health_profiles(opt)
+    # health_profiles(opt)
+    availability_complementary(opt)
 
 
 

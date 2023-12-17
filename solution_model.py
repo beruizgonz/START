@@ -9,7 +9,7 @@ from utils import create_color_palettes, apply_color, access_model_variables
 from generate_data import add_sheet_excel
 
 #  Read the data from the excel file
-datafile='Data(1).xlsx'
+datafile='Data2Inf.xlsx'
 
 shdata = pd.read_excel(datafile, sheet_name='Data', header=None)
 pNperiods = shdata.loc[0,1]
@@ -124,8 +124,8 @@ def fligths_plan(excel, model):
                 perret = t
         dict[f'Person {i}'] = [perdep+1, perret+1]
     df_people = pd.DataFrame.from_dict(dict, orient='index', columns=['Departure', 'Return'])
-    df_people['Person'] = df_people.index
-    df_people = df_people[['Person', 'Departure', 'Return']]    
+    df_people['Person'] =  range(1, len(df_people) + 1)
+    df_people = df_people[['Person', 'Departure', 'Return']]  
     add_sheet_excel(excel, 'Flights plan', df_people, index = False)
 
 def health_profile_complementary(excel_file ,df, dict_references, color_palettes):
@@ -149,6 +149,12 @@ def health_profile_complementary(excel_file ,df, dict_references, color_palettes
         sheet.cell(row=i + 5, column=df.shape[1] + 2).fill = color_fill
     workbook.save(excel_file)
 
+def to_latex(datafile, sheet): 
+    df = pd.read_excel(datafile, sheet_name=sheet)
+    latex = df.to_latex(index=False)
+    latex = df.fillna('')
+    print(latex.to_latex(index=False))
+
 def health_profiles(model, excel_file):
     results = np.zeros((pNpeople, pNperiods), dtype=int)
     vBeta = access_model_variables('vBeta', 3, model)
@@ -160,6 +166,8 @@ def health_profiles(model, excel_file):
                     results[i,t] = j+1
     dict_health_profiles = dict(zip(range(1, pNhealthp + 1), pNameabbprofiles))
     df = pd.DataFrame(results)
+    # Delete the rows that all the values are 0
+    df = df.loc[~(df==0).all(axis=1)]
     color_palettes = create_color_palettes(pNhealthp)
     health_profile_complementary(excel_file, df,dict_health_profiles, color_palettes)
 
@@ -192,3 +200,4 @@ if __name__ == '__main__':
     fligths_plan(excel_file_path, model)
     health_profiles(model, excel_file_path)   
     necessary_people(excel_file_path)
+    # to_latex('Res_Data(1).xlsx','Profile plan')
