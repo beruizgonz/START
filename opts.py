@@ -7,7 +7,7 @@ def parser_args():
     parser.add_argument('--nProfiles', type=int, default=23, help='Number of profiles that exists in the roster')
     parser.add_argument('--maxPeriods', type=int, default=4, help='Maximum number of periods that a person can work')
     parser.add_argument('--minPeriods', type=int, default=2, help='Minimum number of periods that a person can work')
-    parser.add_argument('--nPeople', type=int, default=2, help='Number of people that exists in the roster')
+    parser.add_argument('--nPeople', type=int, default=10, help='Number of people that exists in the roster')
     parser.add_argument('--Discount', type=int, default=20, help='Discount for the cost of the charter')
     parser.add_argument('--nDiscount', type=int, default=10, help = ' Minimum number of persons for the discount')
     parser.add_argument('--ratio', type=int, default=10, help='Ratio between the number of regular flights and the number of chartered flights'  )

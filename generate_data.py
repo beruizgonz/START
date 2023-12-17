@@ -44,21 +44,6 @@ def create_prices(opts):
     df_prices = df_prices[['Tperiod', 'Outward', 'Return']]  
     add_sheet_excel(excel_file_path, 'Prices', df_prices, False)
 
-def persons_availability(opts):
-    periods = []
-    for i in range(opts.nPeriods):
-        periods.append("Period " + str(i))
-    persons = []
-    for i in range(opts.nPeople):
-        persons.append("Person " + str(i))
-    df = pd.DataFrame(index=persons, columns=periods)
-    values = [0, 1, 2]
-    for i in range(opts.nPeople):
-        for j in range(opts.nPeriods):
-            df.iloc[i, j] = random.choice(values)
-    add_sheet_excel(excel_file_path, 'Availability', df, True)
-    wb = openpyxl.load_workbook(excel_file_path)
-    columns_dimensions(excel_file_path, wb, 'Availability', df, width = 10)
 
 def chartered_flights(opts):
     df = pd.DataFrame(index=range(1, opts.nPeriods + 1), columns=[f'Chartered {i + 1}' for i in range(opts.nCharter)])
@@ -241,17 +226,18 @@ def health_profiles(opts):
     df_health_profiles = df_health_profiles[['Person | Profile'] + list(df_health_profiles.columns[:-1])]
     add_sheet_excel(opts.output_path, 'HealthProfiles', df_health_profiles, False)
 
-def availability_complementary(opts): 
-    for i in range(opts.nPeople): 
-        number_preference = random.randint(0,2)
+def availability(opts):
+    df = pd.DataFrame(index=range(1, opts.nPeople + 1), columns=range(1, opts.nPeriods + 1))
+    
+    for i in range(opts.nPeople):
+        number_preference = random.randint(0, 2)
         probabilities = generate_probabilities(number_preference)
-        print(f'Number: {number_preference} and probabilities {probabilities}')
-        for i in range(opts.nPeriods):
-            df = pd.DataFrame(index=range(1,opts.nPeople + 1), columns= range(1,opts.nPeriods + 1))
-            for i in range(opts.nPeople):
-                for j in range(opts.nPeriods):
-                    df.loc[i+1,j+1] = weighted_random_choice(probabilities)
-    add_sheet_excel(opts.output_path, 'Availability', df, True)   
+        print(f'Person {i+1}: Number Preference = {number_preference}, Probabilities = {probabilities}')
+        
+        for j in range(opts.nPeriods):
+            df.loc[i+1, j+1] = weighted_random_choice(probabilities)
+
+    add_sheet_excel(opts.output_path, 'Availability', df, True)
 
 def weighted_random_choice(probabilities):
     """ Selects a number based on given probabilities. """
@@ -288,21 +274,21 @@ def generate_probabilities(number_preference):
 
 if __name__ == '__main__':
     opt = parser_args()
-    # create_excel_file(opt)
-    # # Create the sheet 'Availability' in the excel file
-    # #persons_availability_two_years(opt)
-    # # Create the sheet 'Demand' in the excel file
-    # # personal_START_team()
-    # demand(opt)
-    # # Create the sheet 'Prices' in the excel file 
-    # create_prices(opt)
-    # # Create the sheet 'Chartered' in the excel file
-    # chartered_flights(opt)
-    # # Create the sheet 'Weights' in the excel file
-    # weights(opt)
-    # Create the sheet 'HealthProfiles' in the excel file
-    # health_profiles(opt)
-    availability_complementary(opt)
+    create_excel_file(opt)
+    # Create the sheet 'Availability' in the excel file
+    #persons_availability_two_years(opt)
+    # Create the sheet 'Demand' in the excel file
+    # personal_START_team()
+    demand(opt)
+    # Create the sheet 'Prices' in the excel file 
+    create_prices(opt)
+    # Create the sheet 'Chartered' in the excel file
+    chartered_flights(opt)
+    # Create the sheet 'Weights' in the excel file
+    weights(opt)
+    #Create the sheet 'HealthProfiles' in the excel file
+    health_profiles(opt)
+    availability(opt)
 
 
 
