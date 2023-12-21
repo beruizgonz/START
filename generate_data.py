@@ -3,17 +3,15 @@ import openpyxl
 import os
 import random as random
 import numpy as np
-from openpyxl.utils import get_column_letter
 
-from utils import add_sheet_excel, columns_dimensions
+from utils import add_sheet_excel, columns_dimensions, generate_probabilities, weighted_random_choice
 from opts import parser_args
 
 excel_file_path = os.path.join(os.getcwd(), 'Simulate_data.xlsx')
-def create_excel_file(opts):
+def create_excel_file(opts, excel_file_path):
     wb = openpyxl.Workbook()
     wb.active.title = 'Data'
     sheet = wb['Data']
-    # Add the general data
     sheet['A1'] = 'N periods'
     sheet['B1'] = opts.nPeriods
     sheet['A2'] = 'N health profiles'
@@ -30,11 +28,13 @@ def create_excel_file(opts):
     sheet['B7'] = opts.maxPeriods
     sheet['A8'] = 'Min periods'
     sheet['B8'] = opts.minPeriods
-
     sheet.column_dimensions['A'].width = 18
     wb.save(excel_file_path)
 
-def create_prices(opts):
+def create_prices(opts, excel_file_path):
+    """
+    Create the sheet 'Prices' in the excel file.
+    """
     df_prices = pd.DataFrame(index=range(1,opts.nPeriods +1), columns=['Outward', 'Return'])
     random.seed(opts.seed)
     for i in range(opts.nPeriods):
@@ -45,7 +45,10 @@ def create_prices(opts):
     add_sheet_excel(excel_file_path, 'Prices', df_prices, False)
 
 
-def chartered_flights(opts):
+def chartered_flights(opts, excel_file_path):
+    """
+    Create the sheet 'Chartered' in the excel file.
+    """
     df = pd.DataFrame(index=range(1, opts.nPeriods + 1), columns=[f'Chartered {i + 1}' for i in range(opts.nCharter)])
     random.seed(opts.seed)
 
@@ -65,34 +68,14 @@ def chartered_flights(opts):
     sheet = wb['Charter']
     columns_dimensions(excel_file_path, wb, sheet, df, width = 14)
 
-def persons_availability_two_years(n_periods, n_persons):
-    periods = ["Period " + str(i) for i in range(n_periods)]
-    days = pd.date_range(start="1/1/2023", periods=n_periods, freq='4D', normalize=False)
-    persons = ["Person " + str(i) for i in range(n_persons)]
-    
-    df = pd.DataFrame(index=persons, columns=days)
-    values = [0, 0.5, 1]
-    
-    for i in range(n_persons):
-        for j in range(0, n_periods, 4):
-            value = random.choice(values) 
-            df.iloc[i, j:j+4] = value
-    df.columns = df.columns.strftime('%d/%m/%Y')
-    # Make the columns with 10pt widt
-    add_sheet_excel(excel_file_path, 'Availability', df, True)
-    wb = openpyxl.load_workbook(excel_file_path)
-    sheet = wb['Availability']
-    columns_dimensions(excel_file_path, wb, sheet, df, width = 12)
-
-def demand(opts):
+def demand(opts, excel_file_path):
     profile_excel = opts.profile_path
     wb = openpyxl.load_workbook(profile_excel)
     sheet = wb['EMT 2']
     df_profiles = pd.DataFrame(sheet.values)
-    print(df_profiles.head())
     df = pd.DataFrame(index = range(1,opts.nProfiles + 1), columns= range(1,opts.nPeriods + 1))
     for i in range(opts.nProfiles):
-        df.loc[i+1,:] = df_profiles.iloc[i+1, 2]
+        df.loc[i+1,:] = df_profiles.iloc[i+1, 3]
     df['Profile | Tperiod'] = df.index
     df = df[['Profile | Tperiod'] + list(df.columns[:-1])]
     add_sheet_excel(excel_file_path, 'Demand', df, False)
@@ -100,40 +83,7 @@ def demand(opts):
     sheet = wb['Demand']
     columns_dimensions(excel_file_path, wb, sheet, df, width = 14)
     
-def personal_START_team(): 
-    # Generate the demand data of person needs.
-    parent_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
-    emt2_data = os.path.join(parent_dir, 'profiles_EMT2.xlsx')
-    wb = openpyxl.load_workbook(emt2_data)
-    sheet = wb['EMT 2']
-    df_profiles = pd.DataFrame(sheet.values)
-    dict_profiles = {}
-    for i in range(1, len(df_profiles)):
-        dict_profiles[i] = df_profiles.iloc[i, 0]
-    dict_abbreviations = {}
-    for key, value in dict_profiles.items():
-        words = value.split()
-        abbreviation = ''
-        for word in words:
-            if word[0].isupper():
-                abbreviation += word[0]
-            if word == 'Pediatra':
-                abbreviation = 'PE'
-            if word == 'Psiaquiatría':
-                abbreviation = 'PS'
-        abbreviation = abbreviation.upper()
-        dict_abbreviations[key] = abbreviation
-    df_profiles = df_profiles.rename(columns={0: 'Profile', 1: 'Number of people needed'})
-    df_profiles = df_profiles.drop(0)
-    df_profiles['Code'] = df_profiles.index
-    df_profiles['Abbreviation'] = df_profiles['Code'].map(dict_abbreviations)
-    df_profiles = df_profiles[['Code',  'Profile', 'Abbreviation', 'Number of people needed']]
-    add_sheet_excel(excel_file_path, 'Demand', df_profiles, False )
-    wb = openpyxl.load_workbook(excel_file_path)
-    sheet = wb['Demand']
-    columns_dimensions(excel_file_path, wb, sheet, df_profiles, width = 30)
-
-def weights(opts):
+def weights(opts, excel_file_path):
     df = pd.DataFrame(index=range(1, 6), columns=['Weight', 'Value ', 'Description'])
     df.loc[1, 'Weight'] = 'W1'
     df.loc[1, 'Value '] = opts.w1
@@ -163,132 +113,65 @@ def weights(opts):
     sheet.delete_rows(1)
     columns_dimensions(excel_file_path, wb, sheet, df, width = 30)
 
-import pandas as pd
-import numpy as np
-import openpyxl
-
-def apply_binomial(row):
-    return [np.random.binomial(1, float(p)) for p in row]
-
-import random
-
 def modify_list(input_list, j):
     if len(input_list) <= 1:
-        return input_list  # No modification needed for lists of length 1 or less
-    
-    # Find indices of all '1's except for the first element
+        return input_list 
     one_indices = [i for i, x in enumerate(input_list[j:], start=1) if x == 1]
-
     if not one_indices:
-        return input_list  # No '1's to modify
-
-    # Randomly select one index to keep as '1'
+        return input_list 
     keep_index = random.choice(one_indices)
-
-    # Set all other '1's to '0', except the one at keep_index
     for i in one_indices:
         if i != keep_index:
             input_list[i] = 0
-
     return input_list
 
-def health_profiles(opts):
-    # Read the profiles files
-    wb = openpyxl.load_workbook(opts.profile_path)
+def health_profiles(opts, excel_file_path):
+    wb = openpyxl.load_workbook(opts.profile_path, excel_file_path)
     sheet = wb['EMT 2']
     df_profiles = pd.DataFrame(sheet.values)
     dict_profiles = {}
     sheet_probability = wb['Probabilities']
     df_probability = pd.DataFrame(sheet_probability.values)
-    
-    # Delete the first column and the first row
     df_probability = df_probability.drop(0)
     df_probability = df_probability.drop(0, axis=1)
     df_profiles = df_profiles.drop(0)
     for i in range(1, len(df_profiles) + 1):
         dict_profiles[i] = df_profiles.iloc[i-1, 3]
-    print(dict_profiles)
-    # For every profile, create opts.ratio number of people
     df_health_profiles = pd.DataFrame(columns=range(1, opts.nProfiles + 1))
     k = 0
-    # Iterate over the rows in df_probability and apply binomial to each
     for i, row in df_probability.iterrows():
         profile = dict_profiles[i]
         profile = int(profile)
         for j in range(opts.ratio*profile):
-            binomial_results = apply_binomial(row)
+            binomial_results = [np.random.binomial(1, float(p)) for p in row]
             if i == 1 or i == 2:
                 binomial_results = modify_list(binomial_results, i)
             df_health_profiles.loc[k,:] = binomial_results
             k += 1
-    # Add health profile to the dataframe
     df_health_profiles['Person | Profile'] = df_health_profiles.index +1
     df_health_profiles = df_health_profiles[['Person | Profile'] + list(df_health_profiles.columns[:-1])]
     add_sheet_excel(opts.output_path, 'HealthProfiles', df_health_profiles, False)
 
-def availability(opts):
+def availability(opts, excel_file_path):
     df = pd.DataFrame(index=range(1, opts.nPeople + 1), columns=range(1, opts.nPeriods + 1))
-    
     for i in range(opts.nPeople):
         number_preference = random.randint(0, 2)
         probabilities = generate_probabilities(number_preference)
         print(f'Person {i+1}: Number Preference = {number_preference}, Probabilities = {probabilities}')
-        
         for j in range(opts.nPeriods):
             df.loc[i+1, j+1] = weighted_random_choice(probabilities)
-
     add_sheet_excel(opts.output_path, 'Availability', df, True)
-
-def weighted_random_choice(probabilities):
-    """ Selects a number based on given probabilities. """
-    numbers = [0, 1, 2]
-    return np.random.choice(numbers, p=probabilities)
-   
-def generate_probabilities(number_preference):
-    highest_probability = random.uniform(0.6, 0.8)
-    remaining_probability = 1 - highest_probability
-    probabilities = [0, 0, 0]
-    second_probability = random.uniform(0, remaining_probability)
-    third_probability = remaining_probability - second_probability
-    if second_probability > third_probability:
-        second_highest_probability, third_highest_probability = second_probability, third_probability
-    else: 
-        second_highest_probability, third_highest_probability = third_probability, second_probability
-    if number_preference == 0:
-        probabilities[number_preference] = highest_probability
-        probabilities[1] = second_highest_probability
-        probabilities[2] = third_highest_probability
-    elif number_preference == 1:
-        probabilities[number_preference] = highest_probability
-        probabilities[0] = second_highest_probability
-        probabilities[2] = third_highest_probability
-    elif number_preference == 2:
-        probabilities[number_preference] = highest_probability
-        probabilities[1] = second_highest_probability
-        probabilities[0] = third_highest_probability
-    return probabilities
-
-
-    
 
 
 if __name__ == '__main__':
     opt = parser_args()
-    create_excel_file(opt)
-    # Create the sheet 'Availability' in the excel file
-    #persons_availability_two_years(opt)
-    # Create the sheet 'Demand' in the excel file
-    # personal_START_team()
-    demand(opt)
-    # Create the sheet 'Prices' in the excel file 
-    create_prices(opt)
-    # Create the sheet 'Chartered' in the excel file
-    chartered_flights(opt)
-    # Create the sheet 'Weights' in the excel file
-    weights(opt)
-    #Create the sheet 'HealthProfiles' in the excel file
-    health_profiles(opt)
-    availability(opt)
+    create_excel_file(opt,excel_file_path)
+    demand(opt,excel_file_path)
+    create_prices(opt,excel_file_path)
+    chartered_flights(opt,excel_file_path)
+    weights(opt,excel_file_path)
+    health_profiles(opt,excel_file_path)
+    availability(opt,excel_file_path)
 
 
 

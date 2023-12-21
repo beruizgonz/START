@@ -200,4 +200,3 @@ if __name__ == '__main__':
     fligths_plan(excel_file_path, model)
     health_profiles(model, excel_file_path)   
     necessary_people(excel_file_path)
-    # to_latex('Res_Data(1).xlsx','Profile plan')
