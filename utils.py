@@ -7,6 +7,9 @@ from openpyxl.utils import get_column_letter
 import random 
 
 def create_color_palettes(N, seed = 42):
+    """
+    Create a dictionary with the color palettes for the profiles.
+    """
     color_palettes = set() 
     np.random.seed(seed)
     while len(color_palettes) < N:
@@ -16,6 +19,9 @@ def create_color_palettes(N, seed = 42):
     return dict_color
 
 def hex_to_argb(hex_color):
+    """
+    Convert a hex color to ARGB. This is need for the excel file. 
+    """
     hex_color = hex_color.lstrip("#")
     return "FF" + hex_color
 
@@ -25,6 +31,9 @@ def create_random_data_frame(N, pNperiods, pNpeople):
     return df
 
 def apply_color(value, color_palettes):
+    """
+    Apply the color to the cell in the excel file.
+    """
     if value == 0:
         return None
     color_ref = color_palettes[value]
@@ -33,6 +42,9 @@ def apply_color(value, color_palettes):
     return fill
 
 def access_model_variables(name_variable, index_variables, model): 
+    """
+    Access to the variables of the model.
+    """
     variable = {}
     if index_variables == 1: 
         for var in model.getVars():
@@ -52,6 +64,9 @@ def access_model_variables(name_variable, index_variables, model):
     return variable
 
 def add_sheet_excel(excel_file, name_sheet, df_data, index = False): 
+    """
+    Add a sheet to the excel file.
+    """
     if name_sheet in openpyxl.load_workbook(excel_file).sheetnames:
         wb = openpyxl.load_workbook(excel_file)
         wb.remove(wb[name_sheet])
@@ -60,17 +75,40 @@ def add_sheet_excel(excel_file, name_sheet, df_data, index = False):
         df_data.to_excel(writer, sheet_name=name_sheet, index = index)
 
 def columns_dimensions(excel_file, wb, sheet, df, width = 10):
+    """
+    Modify the width of the columns in the excel file.
+    """
     for i in range(df.shape[1]+1):
         column_letter = get_column_letter(i+1)
         sheet.column_dimensions[column_letter].width = width
     wb.save(excel_file)
 
 def weighted_random_choice(probabilities):
-    """ Selects a number based on given probabilities. """
+    """
+    Selects a number based on given probabilities.
+    """
     numbers = [0, 1, 2]
     return np.random.choice(numbers, p=probabilities)
+
+def modify_list(input_list, j):
+    """
+    Modify the list with ones. It makes that in the least can be at maximun two ones.
+    """
+    if len(input_list) <= 1:
+        return input_list 
+    one_indices = [i for i, x in enumerate(input_list[j:], start=1) if x == 1]
+    if not one_indices:
+        return input_list 
+    keep_index = random.choice(one_indices)
+    for i in one_indices:
+        if i != keep_index:
+            input_list[i] = 0
+    return input_list
    
 def generate_probabilities(number_preference):
+    """
+    Generate the probabilities for the availability of the people.
+    """
     highest_probability = random.uniform(0.6, 0.8)
     remaining_probability = 1 - highest_probability
     probabilities = [0, 0, 0]
@@ -94,4 +132,12 @@ def generate_probabilities(number_preference):
         probabilities[0] = third_highest_probability
     return probabilities
 
+def to_latex(datafile, sheet): 
+    """
+    Convert the excel file to latex code.
+    """
+    df = pd.read_excel(datafile, sheet_name=sheet)
+    latex = df.to_latex(index=False)
+    latex = df.fillna('')
+    print(latex.to_latex(index=False))
 

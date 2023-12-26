@@ -5,9 +5,7 @@ import pandas as pd
 import numpy as np
 import openpyxl
 
-from utils import create_color_palettes, apply_color, access_model_variables
-from generate_data import add_sheet_excel
-
+from utils import create_color_palettes, apply_color, access_model_variables, add_sheet_excel, columns_dimensions
 #  Read the data from the excel file
 datafile='Data2Inf.xlsx'
 
@@ -36,6 +34,10 @@ pNameabbprofiles = shhealthprofiles.loc[1,1:].to_numpy()
 pProfiles = shhealthprofiles.loc[2:,1:].to_numpy()
 
 def model_dimensions(model, excel):
+    """
+    Create the sheet 'Model dimensions' in the excel file.
+    The sheet contains the number of variables, constraints and the type of variables.
+    """
     df = pd.DataFrame(index = ['total', 'continuous', 'binary', 'integer', 'constrains'], columns=['Type', 'Number'])
     df['Type'] = df.index
     df['Number'] = [    
@@ -46,6 +48,9 @@ def model_dimensions(model, excel):
         model.NumConstrs
     ]
     add_sheet_excel(excel, 'Model dimensions', df, index = True)
+    wb = openpyxl.load_workbook(excel)
+    sheet = wb['Model dimensions']
+    columns_dimensions(sheet, wb, 'Model dimensions', 16)
 
 def model_performance(model,excel): 
     info = ['Objective value', 'Runtime', 'MIPGap', 'Status']
@@ -58,7 +63,10 @@ def model_performance(model,excel):
     ]
     add_sheet_excel(excel, 'Model performance', df, index = True)
 
-def chartered(model, excel): 
+def chartered(model, excel):
+    """
+    Create the sheet 'Charter' in the excel file. The sheet contains the number of people that are chartered and the cost.
+    """ 
     vGamma = access_model_variables('vGamma', 2, model)
     charter_data = []
     cost_data = []
@@ -74,6 +82,10 @@ def chartered(model, excel):
     add_sheet_excel(excel, 'Charter', df, index = True)
 
 def regular_and_cost(excel, model): 
+    """
+    Create the sheet 'Regular' in the excel file. The sheet contains the total cost of the outward and return flights and the 
+    sum of both.
+    """
     costoutflights = 0
     costretflights = 0
     vXstand = access_model_variables('Xstand', 1, model)
@@ -89,7 +101,10 @@ def regular_and_cost(excel, model):
     add_sheet_excel(excel, 'Regular', df, index = True)
 
 def out_and_return(excel, model):
-    # Get the variables vXstand, vXdisc, vYstand, vYdisc, vZout, vZret
+    """
+    Create the sheet 'Outwards and return' in the excel file. The sheet contains the number of people that are
+    outwards and return depending on the type of flight.
+    """
     vXstand = access_model_variables('Xstand', 1, model)
     vXdisc = access_model_variables('Xdisc', 1, model)
     vYstand = access_model_variables('Ystand', 1, model)
@@ -111,6 +126,9 @@ def out_and_return(excel, model):
     add_sheet_excel(excel, 'Outwards and return', df, index = True)
  
 def fligths_plan(excel, model): 
+    """
+    Create the sheet 'Flights plan' in the excel file. The sheet contains the period of departure and return of each person.
+    """
     vAlphaout = access_model_variables('Alphaout', 2, model)
     vAlpharet = access_model_variables('Alpharet', 2, model)
     dict = {}
@@ -127,6 +145,9 @@ def fligths_plan(excel, model):
     df_people['Person'] =  range(1, len(df_people) + 1)
     df_people = df_people[['Person', 'Departure', 'Return']]  
     add_sheet_excel(excel, 'Flights plan', df_people, index = False)
+    wb = openpyxl.load_workbook(excel)
+    sheet = wb['Flights plan']
+    columns_dimensions(sheet, wb, 'Flights plan', 25)
 
 def health_profile_complementary(excel_file ,df, dict_references, color_palettes):
     workbook = openpyxl.load_workbook(excel_file)
@@ -149,13 +170,10 @@ def health_profile_complementary(excel_file ,df, dict_references, color_palettes
         sheet.cell(row=i + 5, column=df.shape[1] + 2).fill = color_fill
     workbook.save(excel_file)
 
-def to_latex(datafile, sheet): 
-    df = pd.read_excel(datafile, sheet_name=sheet)
-    latex = df.to_latex(index=False)
-    latex = df.fillna('')
-    print(latex.to_latex(index=False))
-
 def health_profiles(model, excel_file):
+    """
+    Create the sheet 'Health profiles' in the excel file. The sheet contains the health profile of each person in each period.
+    """
     results = np.zeros((pNpeople, pNperiods), dtype=int)
     vBeta = access_model_variables('vBeta', 3, model)
     for i in range(0,pNpeople):
@@ -166,12 +184,15 @@ def health_profiles(model, excel_file):
                     results[i,t] = j+1
     dict_health_profiles = dict(zip(range(1, pNhealthp + 1), pNameabbprofiles))
     df = pd.DataFrame(results)
-    # Delete the rows that all the values are 0
     df = df.loc[~(df==0).all(axis=1)]
     color_palettes = create_color_palettes(pNhealthp)
     health_profile_complementary(excel_file, df,dict_health_profiles, color_palettes)
 
 def necessary_people(excel_file): 
+    """
+    Create the sheet 'Necessary people' in the excel file. The sheet contains the number of complementary people that are necessary to 
+    attend the emergency in each period.
+    """
     vUmas = access_model_variables('vUmas', 2, model)
     df = pd.DataFrame(index = range(0, pNhealthp), columns=range(0, pNperiods))
     dict_health_profiles = dict(zip(range(1, pNhealthp + 1), pNameabbprofiles))
