@@ -4,6 +4,7 @@ from gurobipy import GRB
 import pandas as pd
 import numpy as np
 import openpyxl
+from STARTmodel import START
 
 from utils import create_color_palettes, apply_color, access_model_variables, add_sheet_excel, columns_dimensions
 #  Read the data from the excel file
@@ -50,7 +51,7 @@ def model_dimensions(model, excel):
     add_sheet_excel(excel, 'Model dimensions', df, index = True)
     wb = openpyxl.load_workbook(excel)
     sheet = wb['Model dimensions']
-    columns_dimensions(sheet, wb, 'Model dimensions', 16)
+    columns_dimensions(excel, wb, sheet, df, 16)
 
 def model_performance(model,excel): 
     info = ['Objective value', 'Runtime', 'MIPGap', 'Status']
@@ -147,7 +148,7 @@ def fligths_plan(excel, model):
     add_sheet_excel(excel, 'Flights plan', df_people, index = False)
     wb = openpyxl.load_workbook(excel)
     sheet = wb['Flights plan']
-    columns_dimensions(sheet, wb, 'Flights plan', 25)
+    columns_dimensions(excel, wb, sheet, df_people, 25)
 
 def health_profile_complementary(excel_file ,df, dict_references, color_palettes):
     workbook = openpyxl.load_workbook(excel_file)
@@ -188,7 +189,7 @@ def health_profiles(model, excel_file):
     color_palettes = create_color_palettes(pNhealthp)
     health_profile_complementary(excel_file, df,dict_health_profiles, color_palettes)
 
-def necessary_people(excel_file): 
+def necessary_people(excel_file, model): 
     """
     Create the sheet 'Necessary people' in the excel file. The sheet contains the number of complementary people that are necessary to 
     attend the emergency in each period.
@@ -204,20 +205,24 @@ def necessary_people(excel_file):
     add_sheet_excel(excel_file, 'Necessary people', df, index = True)
 
 if __name__ == '__main__': 
-    model_path = os.path.join(os.getcwd(), 'model.mps')
-    model = gp.read(model_path)
-    model.optimize()
+    model = START(datafile)
+    model.create_model()
+    model.create_variables()
+    model.create_constrains()
+    model.create_objective_function()
+    solution = model.solve()
 
-    filename = f'Res_{datafile}'
+    filename = f'Res1_{datafile}'
     excel_file_path = os.path.join(os.getcwd(), filename)
     wb = openpyxl.Workbook()
     wb.active.title = 'Model dimensions'
     wb.save(excel_file_path)
-    model_performance(model, excel_file_path)
-    model_dimensions(model, excel_file_path)
-    chartered(model, excel_file_path)
-    regular_and_cost(excel_file_path, model)
-    out_and_return(excel_file_path, model)
-    fligths_plan(excel_file_path, model)
-    health_profiles(model, excel_file_path)   
-    necessary_people(excel_file_path)
+    model_performance(solution, excel_file_path)
+    print('a')
+    model_dimensions(solution, excel_file_path)
+    chartered(solution, excel_file_path)
+    regular_and_cost(excel_file_path, solution)
+    out_and_return(excel_file_path, solution)
+    fligths_plan(excel_file_path, solution)
+    health_profiles(solution, excel_file_path)   
+    necessary_people(excel_file_path, solution)
