@@ -133,6 +133,27 @@ def availability(opts):
             df.loc[i+1, j+1] = weighted_random_choice(probabilities)
     add_sheet_excel(opts.output_path, 'Availability', df, True)
 
+def note(opts): 
+    """
+    Create the sheet 'Note' in the excel file. The note is a paramter of the model in case of tie. 
+    """
+    df = pd.DataFrame(index=range(1, opts.nPeople + 1), columns= ['Note'])
+    for i in range(opts.nPeople):
+        # Create a function of probability. I have three values: 0, 1, 2. For value 0 the probability is 0.1, for value 1 the probability is 0.2 and for value 2 the probability is 0.7.
+        numbers = [0, 1, 2]
+        probabilities = [0.4, 0.5, 0.1]
+        number_select = random.choices(numbers, probabilities, k=1)[0]
+        if number_select == 0:
+            note = random.uniform(5,6.999999)
+        elif number_select == 1:
+            note = random.uniform(7,8.999999)
+        else:
+            note = random.uniform(9, 10)
+        df.loc[i+1, 'Note'] = note
+    add_sheet_excel(opts.output_path, 'Note', df, True)
+
+
+
 def weights(opts):
     """
     Define the weights for the objective function.
@@ -175,6 +196,7 @@ if __name__ == '__main__':
     health_profiles(opt)
     availability(opt)
     weights(opt)
+    note(opt)
 
 
 
