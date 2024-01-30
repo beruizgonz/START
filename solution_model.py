@@ -212,13 +212,12 @@ if __name__ == '__main__':
     model.create_objective_function()
     solution = model.solve()
 
-    filename = f'Res1_{datafile}'
+    filename = f'Res_{datafile}'
     excel_file_path = os.path.join(os.getcwd(), filename)
     wb = openpyxl.Workbook()
     wb.active.title = 'Model dimensions'
     wb.save(excel_file_path)
     model_performance(solution, excel_file_path)
-    print('a')
     model_dimensions(solution, excel_file_path)
     chartered(solution, excel_file_path)
     regular_and_cost(excel_file_path, solution)
