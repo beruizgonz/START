@@ -54,10 +54,10 @@ def chartered_flights(opts):
     min_cap_values = opts.minCapacity
     max_cap_values = opts.maxCapacity
     df.insert(2, '', '') 
-    df['Min cap'] = min_cap_values[:len(max_cap_values)] + [None] * (opts.nPeriods - len(max_cap_values))
-    df['Max cap'] = max_cap_values[:len(max_cap_values)] + [None] * (opts.nPeriods - len(max_cap_values))
+    df['Min Cap'] = min_cap_values[:len(max_cap_values)] + [None] * (opts.nPeriods - len(max_cap_values))
+    df['Max Cap'] = max_cap_values[:len(max_cap_values)] + [None] * (opts.nPeriods - len(max_cap_values))
     df['Tperiod'] = df.index
-    df = df[['Tperiod', 'Chartered 1', 'Chartered 2', '', 'Min cap', 'Max cap']]
+    df = df[['Tperiod', 'Chartered 1', 'Chartered 2', '', 'Min Cap', 'Max Cap']]
     add_sheet_excel(opts.output_path, 'Charter', df, False)
     wb = openpyxl.load_workbook(opts.output_path)
     sheet = wb['Charter']
@@ -97,23 +97,27 @@ def health_profiles(opts):
     df_probability = df_probability.drop(0)
     df_probability = df_probability.drop(0, axis=1)
     df_profiles = df_profiles.drop(0)
-    for i in range(1, len(df_profiles) + 1):
+    for i in range(1, opts.nProfiles + 1):
         dict_profiles[i] = df_profiles.iloc[i-1, 3]
     df_health_profiles = pd.DataFrame(columns=range(1, opts.nProfiles + 1))
     k = 0
-    for i, row in df_probability.iterrows():
+    #for i, row in df_probability.iterrows():
+    # read only the opt.nProfiles first rows
+    for i, row in df_probability.iloc[:opts.nProfiles].iterrows():
         profile = dict_profiles[i]
         profile = int(profile)
         for j in range(opts.ratio*profile):
-            binomial_results = [np.random.binomial(1, float(p)) for p in row]
+            binomial_results = [np.random.binomial(1, float(p)) for p in row[:opts.nProfiles]]
             if i == 1 or i == 2:
                 binomial_results = modify_list(binomial_results, i)
             df_health_profiles.loc[k,:] = binomial_results
             k += 1
     df_health_profiles['Person | Profile'] = df_health_profiles.index +1
-    abb = pd.DataFrame([abbreviation])
+    abb = pd.DataFrame([abbreviation]) 
+    # Get only the opt.nProfiles first rows
+    abb = abb.iloc[:opts.nProfiles]
     df_health_profiles = pd.concat([abb,df_health_profiles]).reset_index(drop=True)
-    df_health_profiles = df_health_profiles[['Person | Profile'] + list(df_health_profiles.columns[:-1])]
+    df_health_profiles = df_health_profiles[['Person | Profile'] + list(df_health_profiles.columns[:opts.nProfiles])]
     add_sheet_excel(opts.output_path, 'HealthProfiles', df_health_profiles, False)  
     wb = openpyxl.load_workbook(opts.output_path)
     sheet = wb['HealthProfiles']
@@ -126,7 +130,9 @@ def availability(opts):
     """
     df = pd.DataFrame(index=range(1, opts.nPeople + 1), columns=range(1, opts.nPeriods + 1))
     for i in range(opts.nPeople):
-        number_preference = random.randint(0, 2)
+        # number_preference = random.randint(0, 2) # Example with a uniform distribution
+        # number_preference = random.choices([0, 1, 2], [0.5, 0.3,0.2], k=1)[0] # Example with a non-uniform distribution and less 2s
+        number_preference = random.choices([0, 1, 2], [0.4,0.4,0.2], k=1)[0] # Example with a non-uniform distribution and less 2s but a higher probability for 2
         probabilities = generate_probabilities(number_preference)
         #print(f'Person {i+1}: Number Preference = {number_preference}, Probabilities = {probabilities}')
         for j in range(opts.nPeriods):
@@ -137,7 +143,7 @@ def note(opts):
     """
     Create the sheet 'Note' in the excel file. The note is a paramter of the model in case of tie. 
     """
-    df = pd.DataFrame(index=range(1, opts.nPeople + 1), columns= ['Note'])
+    df = pd.DataFrame(index=range(1, opts.nPeople + 1), columns= ['Grade'])
     for i in range(opts.nPeople):
         # Create a function of probability. I have three values: 0, 1, 2. For value 0 the probability is 0.1, for value 1 the probability is 0.2 and for value 2 the probability is 0.7.
         numbers = [0, 1, 2]
@@ -149,42 +155,41 @@ def note(opts):
             note = random.uniform(7,8.999999)
         else:
             note = random.uniform(9, 10)
-        df.loc[i+1, 'Note'] = note
-    add_sheet_excel(opts.output_path, 'Note', df, True)
+        note = round(note, 2)
+        df.loc[i+1, 'Grade'] = note
+    add_sheet_excel(opts.output_path, 'Grades', df, True)
 
-
-
-def weights(opts):
-    """
-    Define the weights for the objective function.
-    """
-    df = pd.DataFrame(index=range(1, 6), columns=['Weight', 'Value ', 'Description'])
-    df.loc[1, 'Weight'] = 'W1'
-    df.loc[1, 'Value '] = opts.w1
-    df.loc[1, 'Description'] = 'Weight for the cost'
-    df.loc[2, 'Weight'] = 'W2'
-    df.loc[2, 'Value '] = opts.w2
-    df.loc[2, 'Description'] = 'Weight for infeasibility'
-    df.loc[3, 'Weight'] = 'W3'
-    df.loc[3, 'Value '] = opts.w3
-    df.loc[3, 'Description'] = 'Weight for second objective'
-    df.loc[5, 'Weight'] = 'ww1'
-    df.loc[5, 'Value '] = opts.ww1
-    df.loc[5, 'Description'] = 'Weight for chartered flights'
-    df.loc[6, 'Weight'] = 'ww2'
-    df.loc[6, 'Value '] = opts.ww2
-    df.loc[6, 'Description'] = 'Weight for regular flights'
-    df.loc[7, 'Weight'] = 'ww3'
-    df.loc[7, 'Value '] = opts.ww3
-    df.loc[7, 'Description'] = 'Weight for number of roles'
-    df.loc[8, 'Weight'] = 'ww4'
-    df.loc[8, 'Value '] = opts.ww4
-    df.loc[8, 'Description'] = 'Weight for availability'
-    add_sheet_excel(opts.output_path, 'Weights', df, False)
-    wb = openpyxl.load_workbook(opts.output_path)
-    sheet = wb['Weights']
-    sheet.delete_rows(1)
-    columns_dimensions(opts.output_path, wb, sheet, df, width = 30)
+# def weights(opts):
+#     """
+#     Define the weights for the objective function.
+#     """
+#     df = pd.DataFrame(index=range(1, 6), columns=['Weight', 'Value ', 'Description'])
+#     df.loc[1, 'Weight'] = 'W1'
+#     df.loc[1, 'Value '] = opts.w1
+#     df.loc[1, 'Description'] = 'Weight for the cost'
+#     df.loc[2, 'Weight'] = 'W2'
+#     df.loc[2, 'Value '] = opts.w2
+#     df.loc[2, 'Description'] = 'Weight for infeasibility'
+#     df.loc[3, 'Weight'] = 'W3'
+#     df.loc[3, 'Value '] = opts.w3
+#     df.loc[3, 'Description'] = 'Weight for second objective'
+#     df.loc[5, 'Weight'] = 'ww1'
+#     df.loc[5, 'Value '] = opts.ww1
+#     df.loc[5, 'Description'] = 'Weight for chartered flights'
+#     df.loc[6, 'Weight'] = 'ww2'
+#     df.loc[6, 'Value '] = opts.ww2
+#     df.loc[6, 'Description'] = 'Weight for regular flights'
+#     df.loc[7, 'Weight'] = 'ww3'
+#     df.loc[7, 'Value '] = opts.ww3
+#     df.loc[7, 'Description'] = 'Weight for number of roles'
+#     df.loc[8, 'Weight'] = 'ww4'
+#     df.loc[8, 'Value '] = opts.ww4
+#     df.loc[8, 'Description'] = 'Weight for availability'
+#     add_sheet_excel(opts.output_path, 'Weights', df, False)
+#     wb = openpyxl.load_workbook(opts.output_path)
+#     sheet = wb['Weights']
+#     sheet.delete_rows(1)
+#     columns_dimensions(opts.output_path, wb, sheet, df, width = 30)
 
 
 if __name__ == '__main__':
@@ -195,7 +200,6 @@ if __name__ == '__main__':
     chartered_flights(opt)
     health_profiles(opt)
     availability(opt)
-    weights(opt)
     note(opt)
 
 

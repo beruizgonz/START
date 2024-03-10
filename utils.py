@@ -13,7 +13,7 @@ def create_color_palettes(N, seed = 42):
     color_palettes = set() 
     np.random.seed(seed)
     while len(color_palettes) < N:
-        color = "#{:02X}{:02X}{:02X}".format(*np.random.randint(0, 255, size=(3,)))
+        color = "#{:02X}{:02X}{:02X}".format(*np.random.randint(128, 255, size=(3,)))
         color_palettes.add(color)
     dict_color = dict(zip(range(1,N+1), color_palettes))
     return dict_color
@@ -131,6 +131,52 @@ def generate_probabilities(number_preference):
         probabilities[1] = second_highest_probability
         probabilities[0] = third_highest_probability
     return probabilities
+
+def sorted_profiles(excel_file):
+    """
+    Sort the profiles based on the number of people that have the profile.
+    """
+import pandas as pd
+
+# Sample DataFrame creation (you would load your actual data)
+data = {
+    'Period 1': ["", "OTS", "OTS", "MDCA", "SAR"],
+    'Period 2': ["OTS", "OTS", "", "MDCA", "SAR"],
+    'Period 3': ["OTS", "OTS", "GS", "MDCA", "SAR"],
+    'Period 4': ["", "OTS", "GS", "MDCA", ""],
+    'Period 5': ["", "", "", "", "GS"]
+}
+index = ["Person 2", "Person 3", "Person 4", "Person 8", "Person 11"]
+
+df = pd.DataFrame(data, index=index)
+
+def find_first_period(row):
+    """
+    Find the first period that the person is attending the emergency.
+    """
+    for i, item in enumerate(row):
+        if item:  
+            return i
+
+def find_last_period(row, pNperiods):
+    """
+    Find the last period that the person is attending the emergency.
+    """
+    for i in range(5,0, -1):  
+        if row[i]:  
+            return i
+    return None  
+
+def sorted_profiles(df, pNperiods):
+    """
+    Sort the profiles based on the periods the person is attending the emergency.
+    """
+    df['First_Period'] = df.apply(find_first_period, axis=1)
+    df['Last_Period'] = df.apply(find_last_period, axis=1, pNperiods = pNperiods)
+
+    df_sorted = df.sort_values(by=['First_Period', 'Last_Period'])
+    df_sorted = df_sorted.drop(columns=['First_Period', 'Last_Period'])
+    return df_sorted
 
 def to_latex(datafile, sheet): 
     """
