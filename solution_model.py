@@ -335,6 +335,7 @@ if __name__ == '__main__':
     print("==========================")
     print("INFEASIBILITY OPTIMIZATION")
     print("==========================")
+    pInfeas = model.model.objVal
     objfun = model.model.objVal
     comtim = model.model.Runtime
     gapmod = model.model.MIPGap
@@ -366,8 +367,14 @@ if __name__ == '__main__':
     print("COST OPTIMIZATION")
     print("=================")
     print(f"Number of people minimizing cost: {npeople}")
-
-    print_model_performance(model, "cost")
+    objfun = model.model.objVal
+    comtim = model.model.Runtime
+    gapmod = model.model.MIPGap
+    status = model.model.Status
+    print(f"Objective function: {objfun}")
+    print(f"Computing time    : {comtim}")
+    print(f"Optimality gap    : {gapmod}")
+    print(f"Status of solution: {status}")
 
     filename_cost = os.path.join('results_small', 'Res_Simulate_data_small_cost.xlsx')
     main(filename_res=filename_cost, model=model, solution=solution)
