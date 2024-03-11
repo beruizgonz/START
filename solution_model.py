@@ -292,7 +292,7 @@ def print_model_performance(model, type_m):
     print(f"Status of solution: {status}")
 
 
-def main(filename_res, list_goals = None, list_weights = None):    
+def main(filename_res, model, solution, list_goals = None, list_weights = None):    
     excel_file_path = os.path.join(os.getcwd(), filename_res)
     wb = openpyxl.Workbook()
     wb.active.title = 'Model dimensions'
@@ -370,7 +370,7 @@ if __name__ == '__main__':
     print_model_performance(model, "cost")
 
     filename_cost = os.path.join('results_small', 'Res_Simulate_data_small_cost.xlsx')
-    main(filename_res=filename_cost)
+    main(filename_res=filename_cost, model=model, solution=solution)
 
     # Minimizing availability
     pWC = 0
@@ -408,7 +408,7 @@ if __name__ == '__main__':
     print(f"Status of solution: {status}")
 
     filename_availability = os.path.join('results_small', 'Res_Simulate_data_small_availability.xlsx')
-    main(filename_res=filename_availability)
+    main(filename_res=filename_availability, model=model, solution=solution)
 
     # Minimizing grades
     pWC = 0
@@ -448,7 +448,7 @@ if __name__ == '__main__':
     print(f"Status of solution: {status}")
 
     filename_grades = os.path.join('results_small', 'Res_Simulate_data_small_grades.xlsx')
-    main(filename_res=filename_grades)
+    main(filename_res=filename_grades, model=model, solution=solution)
 
     # GOAL PROGRAMMING RESOLUTION
     pWC = 0
@@ -489,7 +489,7 @@ if __name__ == '__main__':
     print(f"Status of solution: {status}")
 
     filename_goal = os.path.join('results_small', 'Res_Simulate_data_small_goal.xlsx')
-    main(filename_res=filename_goal, list_goals = [pGoalc, pGoala, pGoalg], list_weights = [pWGC, pWGA, pWGG])
+    main(filename_res=filename_goal, model = model, solution = solution, list_goals = [pGoalc, pGoala, pGoalg], list_weights = [pWGC, pWGA, pWGG])
 
     # COMPROMISE PROGRAMMING RESOLUTION
     pWC = 1 / (max(payoff[1, 0], payoff[2, 0]) - payoff[0, 0])
@@ -530,4 +530,4 @@ if __name__ == '__main__':
     print(f"Status of solution: {status}")
 
     filename_compromise = os.path.join('results_small', 'Res_Simulate_data_small_compromise.xlsx')
-    main(filename_res= filename_compromise, list_weights = [pWC, pWA, pWG])
+    main(filename_res= filename_compromise, model=model, solution = solution, list_weights = [pWC, pWA, pWG])
