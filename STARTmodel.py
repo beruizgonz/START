@@ -1,11 +1,8 @@
 import pandas as pd
-import numpy as np
-import openpyxl
-from openpyxl.styles import PatternFill
 from gurobipy import quicksum, Model, GRB
 
 class START:
-    def __init__(self, excel_file, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade):
+    def __init__(self, excel_file, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade, pIdc, pIda, pIdg):
         super(START).__init__()
         self.excel_file = excel_file
         self.data = pd.read_excel(excel_file, sheet_name='Data', header=None)
@@ -41,15 +38,15 @@ class START:
         self.grades = pd.read_excel(excel_file, sheet_name='Grades')
         self.pGrades = self.grades.loc[0:self.pNpeople-1,'Grade'].to_numpy()
 
-        # self.weights = pd.read_excel(excel_file, sheet_name='Weights', header=None)
-        # self.pW1 = self.weights.loc[0,1]
-        # self.pW2 = self.weights.loc[1,1]
-        # self.pW3 = self.weights.loc[2,1]
+        #self.weights = pd.read_excel(excel_file, sheet_name='Weights', header=None)
+        #self.pW1 = self.weights.loc[0,1]
+        #self.pW2 = self.weights.loc[1,1]
+        #self.pW3 = self.weights.loc[2,1]
 
-        # self.pWW1 = self.weights.loc[4,1]
-        # self.pWW2 = self.weights.loc[5,1]
-        # self.pWW3 = self.weights.loc[6,1]
-        # self.pWW4 = self.weights.loc[7,1]
+        #self.pWW1 = self.weights.loc[4,1]
+        #self.pWW2 = self.weights.loc[5,1]
+        #self.pWW3 = self.weights.loc[6,1]
+        #self.pWW4 = self.weights.loc[7,1]
 
         self.vAlphaout = {}
         self.vAlpharet = {}
@@ -90,6 +87,9 @@ class START:
         self.pGoala = pGoala
         self.pGoalg = pGoalg
         self.pMaxgrade = pMaxgrade
+        self.pIdc = pIdc
+        self.pIda = pIda
+        self.pIdg = pIdg
 
         self.pMaxgrade = max(self.pGrades)
 
@@ -241,7 +241,8 @@ class START:
     def create_objective_function(self):
         # Objective function definition with parameters for any of the objectives
         self.model.setObjective(self.pWI*self.vInfeas +
-                                self.pWC*self.vCost + self.pWA*self.vMeanav + self.pWG*self.vMeangrade +
+                                #self.pWC*self.vCost + self.pWA*self.vMeanav + self.pWG*self.vMeangrade +
+                                self.pWC * (self.vCost - self.pIdc) + self.pWA * (self.pIda - self.vMeanav) + self.pWG * (self.pIdg - self.vMeangrade) +
                                 self.pWGC*self.vDevc2 + self.pWGA*self.vDeva1 + self.pWGG*self.vDevg1 +
                                 self.pWO*self.vOnerole,
                                 sense=GRB.MINIMIZE)

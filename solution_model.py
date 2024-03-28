@@ -10,8 +10,8 @@ from utils import create_color_palettes, apply_color, access_model_variables, ad
 #  Read the data from the excel file
 #datafile='Data.xlsx'
 #datafile='Data2Inf.xlsx'
-#datafile='Simulate_data.xlsx'
 datafile='Simulate_data_small.xlsx'
+#datafile='Simulate_data_small.xlsx'
 
 shdata = pd.read_excel(datafile, sheet_name='Data', header=None)
 pNperiods = shdata.loc[0,1]
@@ -37,11 +37,11 @@ pNameprofiles = shhealthprofiles.loc[0,1:].to_numpy()
 pNameabbprofiles = shhealthprofiles.loc[1,1:].to_numpy()
 pProfiles = shhealthprofiles.loc[2:,1:].to_numpy()
 
-def create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade):
+def create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade, pIdc, pIda, pIdg):
     """
     Create the model for the problem.
     """
-    model = START(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade)
+    model = START(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade, pIdc, pIda, pIdg)
     model.create_model()
     model.create_variables()
     model.create_constrains()
@@ -156,7 +156,7 @@ def out_and_return(excel, model):
     npeopdiscr = sum(vYdisc[t].X for t in range(1, pNperiods))
     npeopcharr = sum(vZret[t].X for t in range(1, pNperiods))
 
-    df = pd.DataFrame(index = ['Standar', 'Discounted', 'Chartered'], columns=['Number of people outwards', 'Number of people return'])
+    df = pd.DataFrame(index = ['Standard', 'Discounted', 'Chartered'], columns=['Number of people outwards', 'Number of people return'])
     df['Number of people outwards'] = [npeopstand, npeopdisc, npeopchar]
     df['Number of people return'] = [npeopstandr, npeopdiscr, npeopcharr]
     add_sheet_excel(excel, 'Outwards and return', df, index = True)
@@ -177,7 +177,7 @@ def fligths_plan(excel, model):
                 for tr in range(t+1, pNperiods):
                     if (vAlpharet[i,tr].X == 1):
                             perret = tr
-                            dict[f'Person {i+1}'] = [perdep+1, perret]
+                            dict[f'Person {i+1:03d}'] = [perdep+1, perret]
     df_people = pd.DataFrame.from_dict(dict, orient='index', columns=['Departure', 'Return'])
     df_people['Person'] =  dict.keys()
     df_people = df_people[['Person', 'Departure', 'Return']]  
@@ -187,12 +187,15 @@ def fligths_plan(excel, model):
     columns_dimensions(excel, wb, sheet, df_people, 25)
 
 def health_profile_complementary(excel_file ,df, dict_references, color_palettes):
+    """
+    Create the sheet 'Profile plan' in the excel file. The sheet contains the health profile of each person in each period.
+    """
     workbook = openpyxl.load_workbook(excel_file)
     sheet = workbook.create_sheet('Profile plan')
     for i in range(1, df.shape[1]):
         sheet.cell(row=1, column=i + 1).value = 'Period ' + str(i)
     for i, index_value in enumerate(df.index, start=1):
-         sheet.cell(row=i + 1, column=1).value = 'Person ' + str(index_value)
+         sheet.cell(row=i + 1, column=1).value = 'Person ' + str(index_value).zfill(3)
     for i, row in enumerate(df.values):
         for j, cell_value in enumerate(row):
             color_fill = apply_color(cell_value, color_palettes)
@@ -256,7 +259,6 @@ def weights_goals(excel_file, array_weights, arrays_goals = None):
     """
     Show the weights of the goal programming and compromise programming
     """
-    # The rows are cost, availability and grades
     df = pd.DataFrame(array_weights)
     df.index = ['Cost', 'Availability', 'Grades']
     df.columns = ['Weights']
@@ -266,8 +268,23 @@ def weights_goals(excel_file, array_weights, arrays_goals = None):
     else:
         add_sheet_excel(excel_file, 'Weights', df, index = True)
 
+def create_payoff_matrix(model, payoff, type_m):
+    """
+    Create the payoff matrix of the problem
+    """
+    values = [model.vCost.X, model.vMeanav.X, model.vMeangrade.X]
+    type_to_index = {"cost": 0, "availability": 1, "grades": 2}
+    
+    if type_m in type_to_index:
+        index = type_to_index[type_m]
+        payoff[index, :] = values
+
 def print_model_performance(model, type_m):
     pInfeas = model.model.objVal
+    npeople = model.vTotpeop.X
+    cost = model.vCost.X
+    avai = model.vMeanav.X
+    grad = model.vMeangrade.X
     objfun = model.model.objVal
     comtim = model.model.Runtime
     gapmod = model.model.MIPGap
@@ -283,14 +300,43 @@ def print_model_performance(model, type_m):
         print("GRADES OPTIMIZATION")
     elif type_m == "goal":
         print("GOAL PROGRAMMING")
-
+    elif type_m == "monobjective":
+        print("MONOOBJECTIVE PROGRAMMING")
+    elif type_m == "compromise":
+        print("COMPROMISE PROGRAMMING")
     print("==========================")
+    
+    if type_m == "infeasibility":
+        print(f"Objective function: {objfun}")
+    else: 
+        print(f"Number of people: {npeople}")
+        print(f"Cost:             {cost}")
+        print(f"Availability:     {avai}")
+        print(f"Grades:           {grad}")
+        print(f"Objective function: {objfun}")
+        print(f"Computing time    : {comtim}")
+        print(f"Optimality gap    : {gapmod}")
+        print(f"Status of solution: {status}")
 
-    print(f"Objective function: {objfun}")
-    print(f"Computing time    : {comtim}")
-    print(f"Optimality gap    : {gapmod}")
-    print(f"Status of solution: {status}")
+def weights(excel_file, model_t):
+    """
+    Read the weights for resolving a type of problem and put them in a dataframe.
+    The weights are read from a column specified by 'model_t' in the Excel file.
+    """
+    # Initialize an empty DataFrame with specified indices
+    df = pd.DataFrame(index=['pWC', 'pWA', 'pWG', 'pWO', 'pWGC', 'pWGA', 'pWGG', 'pGoalc', 'pGoala', 'pGoalg'],
+                      columns=[model_t])
+    
+    # Read the specific column from the Excel file, assuming the column name matches 'model_t'
+    # The function 'usecols' parameter can specify a single column to read
+    # 'nrows' parameter is set according to the expected number of weights
+    weight_data = pd.read_excel(excel_file, usecols=[model_t], nrows=len(df.index))
+    
+    # Assign the read weights to the DataFrame under the column named after 'model_t'
+    df[model_t] = weight_data.values.flatten()  # Flatten the array if necessary
 
+    return df
+ 
 
 def main(filename_res, model, solution, list_goals = None, list_weights = None):    
     excel_file_path = os.path.join(os.getcwd(), filename_res)
@@ -306,16 +352,20 @@ def main(filename_res, model, solution, list_goals = None, list_weights = None):
     fligths_plan(excel_file_path, solution)
     health_profiles(solution, excel_file_path)   
     necessary_people(excel_file_path, solution)
-    if "goal" in filename_res or "compromise" in filename_res:
+    if "GP1" in filename_res or "GP2" in filename_res or "Compromise" in filename_res or "Monobjective" in filename_res:
         payoff_matrix(excel_file_path, payoff)
-        weights_goals(excel_file_path, [pWGC, pWGA, pWGG], list_goals)
+        weights_goals(excel_file_path, list_weights, list_goals)
 
 
 if __name__ == '__main__':
-    os.makedirs('results_small', exist_ok=True)
-    pPercost = 0.10
+    os.makedirs('results', exist_ok=True)
+
     vBetaini = {}
     pMaxgrade = 10
+
+    pIdc = 0
+    pIda = 0
+    pIdg = 0
 
     # First resolution is for testing feasibility, then, pInfeas is high
     pInfeas = 9999
@@ -330,17 +380,13 @@ if __name__ == '__main__':
     pGoalc = 0
     pGoala = 0
     pGoalg = 0
-
-    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade)
-    print("==========================")
-    print("INFEASIBILITY OPTIMIZATION")
-    print("==========================")
-    pInfeas = model.model.objVal
-    objfun = model.model.objVal
-    comtim = model.model.Runtime
-    gapmod = model.model.MIPGap
-    status = model.model.Status
-    print(f"Objective function: {objfun}")
+    df = weights('weights.xlsx', 'infeseability')
+    print(df)
+    
+    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade, pIdc, pIda, pIdg)
+    print_model_performance(model, "infeasibility")
+    filename_infeas = os.path.join('results', '01_Res_Simulate_data_Infeasibility.xlsx')
+    main(filename_res=filename_infeas, model=model, solution=solution)
 
     # PAYOFF MATRIX
     payoff = np.empty((3, 3))
@@ -350,137 +396,93 @@ if __name__ == '__main__':
     pWC = 1
     pWA = 0
     pWG = 0
-    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade)
+    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade, pIdc, pIda, pIdg)
     for i in range(0, pNpeople):
         for j in range(0, pNhealthp):
             for t in range(0, pNperiods):
                 vBetaini[i,j,t] = model.vBeta[i,j,t].X
-
-    npeople = model.vTotpeop.X
-    cost = model.vCost.X
-    avai = model.vMeanav.X
-    grad = model.vMeangrade.X
-    payoff[0, 0] = cost
-    payoff[0, 1] = avai
-    payoff[0, 2] = grad
-    print("=================")
-    print("COST OPTIMIZATION")
-    print("=================")
-    print(f"Number of people minimizing cost: {npeople}")
-    objfun = model.model.objVal
-    comtim = model.model.Runtime
-    gapmod = model.model.MIPGap
-    status = model.model.Status
-    print(f"Objective function: {objfun}")
-    print(f"Computing time    : {comtim}")
-    print(f"Optimality gap    : {gapmod}")
-    print(f"Status of solution: {status}")
-
-    filename_cost = os.path.join('results_small', 'Res_Simulate_data_small_cost.xlsx')
+    
+    create_payoff_matrix(model, payoff, "cost")
+    print_model_performance(model, "cost")
+    filename_cost = os.path.join('results', '02_Res_Simulate_data_Cost.xlsx')
     main(filename_res=filename_cost, model=model, solution=solution)
 
     # Minimizing availability
     pWC = 0
     # As we want to maximize the availability, the weight is -1:
-    pWA = -1
+    pWA = 1
     pWG = 0
 
-    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade)
-
-    """
-    for i in range(0, pNpeople):
-        for j in range(0, pNhealthp):
-            for t in range(0, pNperiods):
-                vBetaini[i,j,t] = model.vBeta[i,j,t].X
-    """
-
-    npeople = model.vTotpeop.X
-    cost = model.vCost.X
-    avai = model.vMeanav.X
-    grad = model.vMeangrade.X
-    payoff[1, 0] = cost
-    payoff[1, 1] = avai
-    payoff[1, 2] = grad
-    print("=========================")
-    print("AVAILABILITY OPTIMIZATION")
-    print("=========================")
-    print(f"Number of people maximizing availability: {npeople}")
-    objfun = model.model.objVal
-    comtim = model.model.Runtime
-    gapmod = model.model.MIPGap
-    status = model.model.Status
-    print(f"Objective function: {objfun}")
-    print(f"Computing time    : {comtim}")
-    print(f"Optimality gap    : {gapmod}")
-    print(f"Status of solution: {status}")
-
-    filename_availability = os.path.join('results_small', 'Res_Simulate_data_small_availability.xlsx')
+    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade, pIdc, pIda, pIdg)
+    create_payoff_matrix(model, payoff, "availability")
+    print_model_performance(model, "availability")
+    filename_availability = os.path.join('results', '03_Res_Simulate_data_Availability.xlsx')
     main(filename_res=filename_availability, model=model, solution=solution)
 
     # Minimizing grades
     pWC = 0
     pWA = 0
     # As we want to maximize the grades, the weight is -1:
-    pWG = -1
-    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade)
-
-    """
-    for i in range(0, pNpeople):
-        for j in range(0, pNhealthp):
-            for t in range(0, pNperiods):
-                vBetaini[i,j,t] = model.vBeta[i,j,t].X
-    """
-
-    npeople = model.vTotpeop.X
-    cost = model.vCost.X
-    avai = model.vMeanav.X
-    grad = model.vMeangrade.X
-    payoff[2, 0] = cost
-    payoff[2, 1] = avai
-    payoff[2, 2] = grad
-    print("===================")
-    print("GRADES OPTIMIZATION")
-    print("===================")
-    print(f"Number of people maximizing grades: {npeople}")
-    print("Payoff matrix:")
-    print(payoff)
-
-    objfun = model.model.objVal
-    comtim = model.model.Runtime
-    gapmod = model.model.MIPGap
-    status = model.model.Status
-    print(f"Objective function: {objfun}")
-    print(f"Computing time    : {comtim}")
-    print(f"Optimality gap    : {gapmod}")
-    print(f"Status of solution: {status}")
-
-    filename_grades = os.path.join('results_small', 'Res_Simulate_data_small_grades.xlsx')
+    pWG = 1
+    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade, pIdc, pIda, pIdg)
+    create_payoff_matrix(model, payoff, "grades")
+    print_model_performance(model, "grades")
+    filename_grades = os.path.join('results', '04_Res_Simulate_data_Grades.xlsx')
     main(filename_res=filename_grades, model=model, solution=solution)
 
-    # GOAL PROGRAMMING RESOLUTION
+    # MONOOBJECTIVE RESOLUTION
+    pWC = 1 / (max(payoff[1, 0], payoff[2, 0]) - payoff[0, 0])
+    pWA = 1 / (payoff[1, 1] - min(payoff[0, 1], payoff[2, 1]))
+    pWG = 1 / (payoff[2, 2] - min(payoff[0, 2], payoff[1, 2]))
+    print(f"pWC:{pWC} pWA: {pWA}, pWG: {pWG}")
+    # Defining weights for goals
+    pWGC = 0
+    pWGA = 0
+    pWGG = 0
+
+    # Defining goals
+    pGoalc = 0
+    pGoala = 0
+    pGoalg = 0
+    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg,
+                                   vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade, pIdc, pIda, pIdg)
+
+    print_model_performance(model, "monobjective")
+    filename_monobjective = os.path.join('results', '05_Res_Simulate_data_Monoobjective.xlsx')
+    main(filename_res=filename_monobjective, model=model, solution=solution, list_weights=[pWC, pWA, pWG])
+
+    # GOAL PROGRAMMING RESOLUTION 1
+    pPercost = 0.10
+    pPerav = 0.10
+    pPergr = 0.10
+
     pWC = 0
     pWA = 0
     pWG = 0
-    pWO = 0.000001
+    pWO = 0
+
     # Defining weights for goals
     pWGC = 1/(max(payoff[1,0],payoff[2,0])-payoff[0,0])
     pWGA = 1/(payoff[1,1]-min(payoff[0,1],payoff[2,1]))
     pWGG = 1/(payoff[2,2]-min(payoff[0,2],payoff[1,2]))
     print(f"pWGC:{pWGC} pWGA: {pWGA}, pWGG: {pWGG}")
     # Defining goals
-    pGoalc = payoff[0,0]*(1+pPercost)
-    pGoala = 2
-    pGoalg = 10
-    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade)
+    pGoalc = payoff[0,0] * (1+pPercost)
+    #pGoala = payoff[1,1]*(1-pPercost)
+    pGoala = payoff[1,1] - pPerav * (payoff[1,1] - min(payoff[0,1], payoff[2,1]))
+    #pGoalg = payoff[2,2]*(1-pPercost)
+    pGoalg = payoff[2,2] - pPergr * (payoff[2,2] - min(payoff[0,2], payoff[1,2]))
+    print(f"GoalC:{pGoalc} GoalA: {pGoala}, GoalG: {pGoalg}")
+    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade, pIdc, pIda, pIdg)
 
     npeople = model.vTotpeop.X
     cost = model.vCost.X
     avai = model.vMeanav.X
     grad = model.vMeangrade.X
 
-    print("================")
-    print("GOAL PROGRAMMING")
-    print("================")
+    print("==================")
+    print("GOAL PROGRAMMING 1")
+    print("==================")
     print(f"Number of people: {npeople}")
     print(f"Cost:             {cost}")
     print(f"Availability:     {avai}")
@@ -495,23 +497,79 @@ if __name__ == '__main__':
     print(f"Optimality gap    : {gapmod}")
     print(f"Status of solution: {status}")
 
-    filename_goal = os.path.join('results_small', 'Res_Simulate_data_small_goal.xlsx')
-    main(filename_res=filename_goal, model = model, solution = solution, list_goals = [pGoalc, pGoala, pGoalg], list_weights = [pWGC, pWGA, pWGG])
+    filename_goal1 = os.path.join('results', '06_Res_Simulate_data_GP1.xlsx')
+    main(filename_res=filename_goal1, model = model, solution = solution, list_goals = [pGoalc, pGoala, pGoalg], list_weights = [pWGC, pWGA, pWGG])
+
+    # GOAL PROGRAMMING RESOLUTION 2
+    pPercost = 0.05
+    pPerav = 0.05
+    pPergr = 0.05
+
+    pWC = 0
+    pWA = 0
+    pWG = 0
+    pWO = 0
+
+    # Defining weights for goals
+    pWGC = 1 / (max(payoff[1, 0], payoff[2, 0]) - payoff[0, 0])
+    pWGA = 1 / (payoff[1, 1] - min(payoff[0, 1], payoff[2, 1]))
+    pWGG = 1 / (payoff[2, 2] - min(payoff[0, 2], payoff[1, 2]))
+    print(f"pWGC:{pWGC} pWGA: {pWGA}, pWGG: {pWGG}")
+    # Defining goals
+    pGoalc = payoff[0, 0] * (1 + pPercost)
+    # pGoala = payoff[1,1]*(1-pPercost)
+    pGoala = payoff[1, 1] - pPerav * (payoff[1, 1] - min(payoff[0, 1], payoff[2, 1]))
+    # pGoalg = payoff[2,2]*(1-pPercost)
+    pGoalg = payoff[2, 2] - pPergr * (payoff[2, 2] - min(payoff[0, 2], payoff[1, 2]))
+    print(f"GoalC:{pGoalc} GoalA: {pGoala}, GoalG: {pGoalg}")
+    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg,
+                                   vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade, pIdc, pIda, pIdg)
+
+    npeople = model.vTotpeop.X
+    cost = model.vCost.X
+    avai = model.vMeanav.X
+    grad = model.vMeangrade.X
+
+    print("==================")
+    print("GOAL PROGRAMMING 2")
+    print("==================")
+    print(f"Number of people: {npeople}")
+    print(f"Cost:             {cost}")
+    print(f"Availability:     {avai}")
+    print(f"Grades:           {grad}")
+    objfun = model.model.objVal
+    comtim = model.model.Runtime
+    gapmod = model.model.MIPGap
+    status = model.model.Status
+
+    print(f"Objective function: {objfun}")
+    print(f"Computing time    : {comtim}")
+    print(f"Optimality gap    : {gapmod}")
+    print(f"Status of solution: {status}")
+
+    filename_goal2 = os.path.join('results', '07_Res_Simulate_data_GP2.xlsx')
+    main(filename_res=filename_goal2, model=model, solution=solution, list_goals=[pGoalc, pGoala, pGoalg],
+         list_weights=[pWGC, pWGA, pWGG])
 
     # COMPROMISE PROGRAMMING RESOLUTION
     pWC = 1 / (max(payoff[1, 0], payoff[2, 0]) - payoff[0, 0])
-    pWA = -1 / (payoff[1, 1] - min(payoff[0, 1], payoff[2, 1]))
-    pWG = -1 / (payoff[2, 2] - min(payoff[0, 2], payoff[1, 2]))
+    pWA = 1 / (payoff[1, 1] - min(payoff[0, 1], payoff[2, 1]))
+    pWG = 1 / (payoff[2, 2] - min(payoff[0, 2], payoff[1, 2]))
+    print(f"pWC:{pWC} pWA: {pWA}, pWG: {pWG}")
     # Defining weights for goals
     pWGC = 0
     pWGA = 0
     pWGG = 0
 
+    pIdc = payoff[0,0]
+    pIda = payoff[1,1]
+    pIdg = payoff[2,2]
+
     # Defining goals
     pGoalc = 0
     pGoala = 0
     pGoalg = 0
-    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade)
+    model, solution = create_model(datafile, pWI, pWC, pWA, pWO, pWG, pInfeas, pWGC, pWGA, pWGG, pGoalc, pGoala, pGoalg, vBetaini, pNpeople, pNperiods, pNhealthp, pMaxgrade, pIdc, pIda, pIdg)
 
     npeople = model.vTotpeop.X
     cost = model.vCost.X
@@ -536,5 +594,5 @@ if __name__ == '__main__':
     print(f"Optimality gap    : {gapmod}")
     print(f"Status of solution: {status}")
 
-    filename_compromise = os.path.join('results_small', 'Res_Simulate_data_small_compromise.xlsx')
+    filename_compromise = os.path.join('results', '08_Res_Simulate_data_Compromise.xlsx')
     main(filename_res= filename_compromise, model=model, solution = solution, list_weights = [pWC, pWA, pWG])

@@ -4,8 +4,58 @@ import os
 import random as random
 import numpy as np
 
-from utils import add_sheet_excel, columns_dimensions, generate_probabilities, weighted_random_choice, modify_list
+from utils import add_sheet_excel, columns_dimensions
 from opts import parser_args
+
+
+def weighted_random_choice(probabilities):
+    """
+    Selects a number based on given probabilities.
+    """
+    numbers = [0, 1, 2]
+    return np.random.choice(numbers, p=probabilities)
+
+def modify_list(input_list, j):
+    """
+    Modify the list with ones. It makes that in the least can be at maximun two ones.
+    """
+    if len(input_list) <= 1:
+        return input_list 
+    one_indices = [i for i, x in enumerate(input_list[j:], start=1) if x == 1]
+    if not one_indices:
+        return input_list 
+    keep_index = random.choice(one_indices)
+    for i in one_indices:
+        if i != keep_index:
+            input_list[i] = 0
+    return input_list
+   
+def generate_probabilities(number_preference):
+    """
+    Generate the probabilities for the availability of the people.
+    """
+    highest_probability = random.uniform(0.6, 0.8)
+    remaining_probability = 1 - highest_probability
+    probabilities = [0, 0, 0]
+    second_probability = random.uniform(0, remaining_probability)
+    third_probability = remaining_probability - second_probability
+    if second_probability > third_probability:
+        second_highest_probability, third_highest_probability = second_probability, third_probability
+    else: 
+        second_highest_probability, third_highest_probability = third_probability, second_probability
+    if number_preference == 0:
+        probabilities[number_preference] = highest_probability
+        probabilities[1] = second_highest_probability
+        probabilities[2] = third_highest_probability
+    elif number_preference == 1:
+        probabilities[number_preference] = highest_probability
+        probabilities[0] = second_highest_probability
+        probabilities[2] = third_highest_probability
+    elif number_preference == 2:
+        probabilities[number_preference] = highest_probability
+        probabilities[1] = second_highest_probability
+        probabilities[0] = third_highest_probability
+    return probabilities
 
 def create_excel_file(opts):
     wb = openpyxl.Workbook()
@@ -101,8 +151,6 @@ def health_profiles(opts):
         dict_profiles[i] = df_profiles.iloc[i-1, 3]
     df_health_profiles = pd.DataFrame(columns=range(1, opts.nProfiles + 1))
     k = 0
-    #for i, row in df_probability.iterrows():
-    # read only the opt.nProfiles first rows
     for i, row in df_probability.iloc[:opts.nProfiles].iterrows():
         profile = dict_profiles[i]
         profile = int(profile)
@@ -114,7 +162,6 @@ def health_profiles(opts):
             k += 1
     df_health_profiles['Person | Profile'] = df_health_profiles.index +1
     abb = pd.DataFrame([abbreviation]) 
-    # Get only the opt.nProfiles first rows
     abb = abb.iloc[:opts.nProfiles]
     df_health_profiles = pd.concat([abb,df_health_profiles]).reset_index(drop=True)
     df_health_profiles = df_health_profiles[['Person | Profile'] + list(df_health_profiles.columns[:opts.nProfiles])]
@@ -134,7 +181,6 @@ def availability(opts):
         # number_preference = random.choices([0, 1, 2], [0.5, 0.3,0.2], k=1)[0] # Example with a non-uniform distribution and less 2s
         number_preference = random.choices([0, 1, 2], [0.4,0.4,0.2], k=1)[0] # Example with a non-uniform distribution and less 2s but a higher probability for 2
         probabilities = generate_probabilities(number_preference)
-        #print(f'Person {i+1}: Number Preference = {number_preference}, Probabilities = {probabilities}')
         for j in range(opts.nPeriods):
             df.loc[i+1, j+1] = weighted_random_choice(probabilities)
     add_sheet_excel(opts.output_path, 'Availability', df, True)
@@ -145,8 +191,6 @@ def note(opts):
     """
     df = pd.DataFrame(index=range(1, opts.nPeople + 1), columns= ['Grade'])
     for i in range(opts.nPeople):
-        # Create a function of probability. I have three values: 0, 1, 2. For value 0 the probability is 0.1, for value 1 the probability is 0.2 and for value 2 the probability is 0.7.
-        numbers = [0, 1, 2]
         probabilities = [0.4, 0.5, 0.1]
         number_select = random.choices(numbers, probabilities, k=1)[0]
         if number_select == 0:
@@ -158,39 +202,6 @@ def note(opts):
         note = round(note, 2)
         df.loc[i+1, 'Grade'] = note
     add_sheet_excel(opts.output_path, 'Grades', df, True)
-
-# def weights(opts):
-#     """
-#     Define the weights for the objective function.
-#     """
-#     df = pd.DataFrame(index=range(1, 6), columns=['Weight', 'Value ', 'Description'])
-#     df.loc[1, 'Weight'] = 'W1'
-#     df.loc[1, 'Value '] = opts.w1
-#     df.loc[1, 'Description'] = 'Weight for the cost'
-#     df.loc[2, 'Weight'] = 'W2'
-#     df.loc[2, 'Value '] = opts.w2
-#     df.loc[2, 'Description'] = 'Weight for infeasibility'
-#     df.loc[3, 'Weight'] = 'W3'
-#     df.loc[3, 'Value '] = opts.w3
-#     df.loc[3, 'Description'] = 'Weight for second objective'
-#     df.loc[5, 'Weight'] = 'ww1'
-#     df.loc[5, 'Value '] = opts.ww1
-#     df.loc[5, 'Description'] = 'Weight for chartered flights'
-#     df.loc[6, 'Weight'] = 'ww2'
-#     df.loc[6, 'Value '] = opts.ww2
-#     df.loc[6, 'Description'] = 'Weight for regular flights'
-#     df.loc[7, 'Weight'] = 'ww3'
-#     df.loc[7, 'Value '] = opts.ww3
-#     df.loc[7, 'Description'] = 'Weight for number of roles'
-#     df.loc[8, 'Weight'] = 'ww4'
-#     df.loc[8, 'Value '] = opts.ww4
-#     df.loc[8, 'Description'] = 'Weight for availability'
-#     add_sheet_excel(opts.output_path, 'Weights', df, False)
-#     wb = openpyxl.load_workbook(opts.output_path)
-#     sheet = wb['Weights']
-#     sheet.delete_rows(1)
-#     columns_dimensions(opts.output_path, wb, sheet, df, width = 30)
-
 
 if __name__ == '__main__':
     opt = parser_args()

@@ -83,73 +83,6 @@ def columns_dimensions(excel_file, wb, sheet, df, width = 10):
         sheet.column_dimensions[column_letter].width = width
     wb.save(excel_file)
 
-def weighted_random_choice(probabilities):
-    """
-    Selects a number based on given probabilities.
-    """
-    numbers = [0, 1, 2]
-    return np.random.choice(numbers, p=probabilities)
-
-def modify_list(input_list, j):
-    """
-    Modify the list with ones. It makes that in the least can be at maximun two ones.
-    """
-    if len(input_list) <= 1:
-        return input_list 
-    one_indices = [i for i, x in enumerate(input_list[j:], start=1) if x == 1]
-    if not one_indices:
-        return input_list 
-    keep_index = random.choice(one_indices)
-    for i in one_indices:
-        if i != keep_index:
-            input_list[i] = 0
-    return input_list
-   
-def generate_probabilities(number_preference):
-    """
-    Generate the probabilities for the availability of the people.
-    """
-    highest_probability = random.uniform(0.6, 0.8)
-    remaining_probability = 1 - highest_probability
-    probabilities = [0, 0, 0]
-    second_probability = random.uniform(0, remaining_probability)
-    third_probability = remaining_probability - second_probability
-    if second_probability > third_probability:
-        second_highest_probability, third_highest_probability = second_probability, third_probability
-    else: 
-        second_highest_probability, third_highest_probability = third_probability, second_probability
-    if number_preference == 0:
-        probabilities[number_preference] = highest_probability
-        probabilities[1] = second_highest_probability
-        probabilities[2] = third_highest_probability
-    elif number_preference == 1:
-        probabilities[number_preference] = highest_probability
-        probabilities[0] = second_highest_probability
-        probabilities[2] = third_highest_probability
-    elif number_preference == 2:
-        probabilities[number_preference] = highest_probability
-        probabilities[1] = second_highest_probability
-        probabilities[0] = third_highest_probability
-    return probabilities
-
-def sorted_profiles(excel_file):
-    """
-    Sort the profiles based on the number of people that have the profile.
-    """
-import pandas as pd
-
-# Sample DataFrame creation (you would load your actual data)
-data = {
-    'Period 1': ["", "OTS", "OTS", "MDCA", "SAR"],
-    'Period 2': ["OTS", "OTS", "", "MDCA", "SAR"],
-    'Period 3': ["OTS", "OTS", "GS", "MDCA", "SAR"],
-    'Period 4': ["", "OTS", "GS", "MDCA", ""],
-    'Period 5': ["", "", "", "", "GS"]
-}
-index = ["Person 2", "Person 3", "Person 4", "Person 8", "Person 11"]
-
-df = pd.DataFrame(data, index=index)
-
 def find_first_period(row):
     """
     Find the first period that the person is attending the emergency.
@@ -178,12 +111,4 @@ def sorted_profiles(df, pNperiods):
     df_sorted = df_sorted.drop(columns=['First_Period', 'Last_Period'])
     return df_sorted
 
-def to_latex(datafile, sheet): 
-    """
-    Convert the excel file to latex code.
-    """
-    df = pd.read_excel(datafile, sheet_name=sheet)
-    latex = df.to_latex(index=False)
-    latex = df.fillna('')
-    print(latex.to_latex(index=False))
 
