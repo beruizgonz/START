@@ -4,3 +4,4 @@ opts.py
 .gitattributes
 .DS_Store
 
+*.xlsx#
