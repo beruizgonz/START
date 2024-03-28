@@ -1,12 +1,6 @@
-__pycache__/
-*.py[cod]
-
-.DS_Store
-
-.gitattributes
-.~lock.*
-
-
 generate_data.py
 opts.py
 *.xlsx
+.gitattributes
+.DS_Store
+
